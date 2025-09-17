@@ -1,8 +1,13 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import FilterModal from "@/components/FilterModal";
+import CreateJobModal from "@/components/CreateJobModal";
 import { 
   Search, 
   Filter, 
@@ -13,10 +18,125 @@ import {
   Eye,
   MessageSquare,
   BarChart3,
-  Plus
+  Plus,
+  X
 } from "lucide-react";
 
 const RecruteurDashboard = () => {
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState({
+    technologies: ["React"],
+    experienceLevel: "Senior (5+ ans)",
+    location: "Paris",
+    salaryRange: [45, 70],
+    availability: ""
+  });
+
+  const [candidates] = useState([
+    {
+      id: "1",
+      name: "Marie Dubois",
+      title: "Développeur Senior",
+      experience: "7 ans d'expérience en développement full-stack, spécialisée React/Node.js",
+      technologies: ["React", "Node.js", "TypeScript", "AWS"],
+      location: "Paris",
+      availability: "Disponible immédiatement", 
+      rating: 4.8,
+      matchPercentage: 92,
+      lastUpdated: "Il y a 2 jours"
+    },
+    {
+      id: "2", 
+      name: "Thomas Martin",
+      title: "Développeur Full-Stack",
+      experience: "5 ans d'expérience, expert en architecture microservices et DevOps",
+      technologies: ["React", "Python", "Docker", "Kubernetes"],
+      location: "Lyon",
+      availability: "Préavis 1 mois",
+      rating: 4.6,
+      matchPercentage: 87,
+      lastUpdated: "Il y a 1 semaine"
+    }
+  ]);
+
+  const [jobs, setJobs] = useState([
+    {
+      id: 1,
+      title: "Développeur Full-Stack Senior",
+      company: "TechCorp",
+      contractType: "CDI",
+      location: "Paris",
+      salaryRange: "55-70k€",
+      status: "Active",
+      publishedDate: "10 mars 2024",
+      applications: 47,
+      matches: 12,
+      interviews: 3
+    },
+    {
+      id: 2,
+      title: "DevOps Engineer", 
+      company: "StartupXYZ",
+      contractType: "CDI",
+      location: "Remote",
+      salaryRange: "60-80k€",
+      status: "Brouillon",
+      publishedDate: "5 mars 2024",
+      applications: 0,
+      matches: 8,
+      interviews: 0
+    }
+  ]);
+
+  const handleApplyFilters = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+    toast({
+      title: "Filtres appliqués",
+      description: "La recherche a été mise à jour avec vos nouveaux critères."
+    });
+  };
+
+  const handleCreateJob = (jobData: any) => {
+    const newJob = {
+      id: Date.now(),
+      title: jobData.title,
+      company: jobData.company,
+      contractType: jobData.contractType,
+      location: jobData.location || "Non spécifié",
+      salaryRange: jobData.salaryMin && jobData.salaryMax ? `${jobData.salaryMin}-${jobData.salaryMax}k€` : "Non spécifié",
+      status: "Brouillon",
+      publishedDate: new Date().toLocaleDateString('fr-FR', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+      }),
+      applications: 0,
+      matches: Math.floor(Math.random() * 20) + 5,
+      interviews: 0
+    };
+    
+    setJobs(prev => [...prev, newJob]);
+    toast({
+      title: "Offre créée !",
+      description: `L'offre "${jobData.title}" a été créée en mode brouillon.`
+    });
+  };
+
+  const removeFilter = (type: string, value?: string) => {
+    if (type === 'technologies' && value) {
+      setFilters(prev => ({
+        ...prev,
+        technologies: prev.technologies.filter(t => t !== value)
+      }));
+    } else {
+      setFilters(prev => ({
+        ...prev,
+        [type]: type === 'technologies' ? [] : ""
+      }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
@@ -109,118 +229,104 @@ const RecruteurDashboard = () => {
                     <Input 
                       placeholder="Rechercher par compétences, technologies..." 
                       className="w-full"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
                   <Button>
                     <Search className="h-4 w-4 mr-2" />
                     Rechercher
                   </Button>
-                  <Button variant="outline">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filtres
-                  </Button>
+                  <FilterModal onApplyFilters={handleApplyFilters} currentFilters={filters} />
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary">React</Badge>
-                  <Badge variant="secondary">Senior (5+ ans)</Badge>
-                  <Badge variant="secondary">Paris</Badge>
-                  <Badge variant="outline">+ Ajouter un filtre</Badge>
+                  {filters.technologies.map(tech => (
+                    <Badge key={tech} variant="secondary" className="cursor-pointer">
+                      {tech}
+                      <button
+                        onClick={() => removeFilter('technologies', tech)} 
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {filters.experienceLevel && (
+                    <Badge variant="secondary" className="cursor-pointer">
+                      {filters.experienceLevel}
+                      <button
+                        onClick={() => removeFilter('experienceLevel')}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  )}
+                  {filters.location && (
+                    <Badge variant="secondary" className="cursor-pointer">
+                      {filters.location}
+                      <button
+                        onClick={() => removeFilter('location')}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             {/* Résultats de recherche */}
             <div className="grid gap-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold">Marie Dubois</h3>
-                        <Badge>Développeur Senior</Badge>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                          <span className="text-sm">4.8</span>
+              {candidates.map(candidate => (
+                <Card key={candidate.id}>
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold">{candidate.name}</h3>
+                          <Badge>{candidate.title}</Badge>
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                            <span className="text-sm">{candidate.rating}</span>
+                          </div>
                         </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        7 ans d'expérience en développement full-stack, spécialisée React/Node.js
-                      </p>
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        <Badge variant="outline" className="text-xs">React</Badge>
-                        <Badge variant="outline" className="text-xs">Node.js</Badge>
-                        <Badge variant="outline" className="text-xs">TypeScript</Badge>
-                        <Badge variant="outline" className="text-xs">AWS</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Paris • Disponible immédiatement</p>
-                    </div>
-                    <div className="flex flex-col gap-2 ml-4">
-                      <Button size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        Voir dossier
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Contacter
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Star className="h-4 w-4 mr-2" />
-                        Favoris
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center text-xs text-muted-foreground border-t pt-3">
-                    <span>Match: 92% avec votre recherche</span>
-                    <span>Dernière mise à jour: Il y a 2 jours</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold">Thomas Martin</h3>
-                        <Badge>Développeur Full-Stack</Badge>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                          <span className="text-sm">4.6</span>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {candidate.experience}
+                        </p>
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {candidate.technologies.map(tech => (
+                            <Badge key={tech} variant="outline" className="text-xs">{tech}</Badge>
+                          ))}
                         </div>
+                        <p className="text-xs text-muted-foreground">{candidate.location} • {candidate.availability}</p>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        5 ans d'expérience, expert en architecture microservices et DevOps
-                      </p>
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        <Badge variant="outline" className="text-xs">React</Badge>
-                        <Badge variant="outline" className="text-xs">Python</Badge>
-                        <Badge variant="outline" className="text-xs">Docker</Badge>
-                        <Badge variant="outline" className="text-xs">Kubernetes</Badge>
+                      <div className="flex flex-col gap-2 ml-4">
+                        <Button size="sm" asChild>
+                          <Link to={`/candidat-profil/${candidate.id}`}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Voir dossier
+                          </Link>
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Contacter
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Star className="h-4 w-4 mr-2" />
+                          Favoris
+                        </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">Lyon • Préavis 1 mois</p>
                     </div>
-                    <div className="flex flex-col gap-2 ml-4">
-                      <Button size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        Voir dossier
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Contacter
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Star className="h-4 w-4 mr-2" />
-                        Favoris
-                      </Button>
+                    <div className="flex justify-between items-center text-xs text-muted-foreground border-t pt-3">
+                      <span>Match: {candidate.matchPercentage}% avec votre recherche</span>
+                      <span>Dernière mise à jour: {candidate.lastUpdated}</span>
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center text-xs text-muted-foreground border-t pt-3">
-                    <span>Match: 87% avec votre recherche</span>
-                    <span>Dernière mise à jour: Il y a 1 semaine</span>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </TabsContent>
 
@@ -231,56 +337,49 @@ const RecruteurDashboard = () => {
                 <h2 className="text-2xl font-bold">Mes offres d'emploi</h2>
                 <p className="text-muted-foreground">Gérez vos offres et suivez les candidatures</p>
               </div>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nouvelle offre
-              </Button>
+              <CreateJobModal onCreateJob={handleCreateJob} />
             </div>
 
             <div className="grid gap-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="font-semibold">Développeur Full-Stack Senior</h3>
-                      <p className="text-sm text-muted-foreground">CDI • Paris • 55-70k€</p>
-                      <p className="text-xs text-muted-foreground mt-1">Publiée le 10 mars 2024</p>
+              {jobs.map(job => (
+                <Card key={job.id}>
+                  <CardContent className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-semibold">{job.title}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {job.contractType} • {job.location} • {job.salaryRange}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {job.status === "Active" ? "Publiée" : "Créée"} le {job.publishedDate}
+                        </p>
+                      </div>
+                      <Badge variant={job.status === "Active" ? "default" : "secondary"}>
+                        {job.status}
+                      </Badge>
                     </div>
-                    <Badge>Active</Badge>
-                  </div>
-                  <div className="flex gap-4 text-sm mb-4">
-                    <span>47 candidatures</span>
-                    <span>12 profils correspondants</span>
-                    <span>3 entretiens planifiés</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline">Voir les candidats</Button>
-                    <Button size="sm" variant="outline">Modifier l'offre</Button>
-                    <Button size="sm" variant="outline">Analytics</Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="font-semibold">DevOps Engineer</h3>
-                      <p className="text-sm text-muted-foreground">CDI • Remote • 60-80k€</p>
-                      <p className="text-xs text-muted-foreground mt-1">Publiée le 5 mars 2024</p>
+                    <div className="flex gap-4 text-sm mb-4">
+                      <span>{job.applications} candidature{job.applications !== 1 ? 's' : ''}</span>
+                      <span>{job.matches} profils correspondants</span>
+                      {job.interviews > 0 && <span>{job.interviews} entretiens planifiés</span>}
                     </div>
-                    <Badge variant="secondary">Brouillon</Badge>
-                  </div>
-                  <div className="flex gap-4 text-sm mb-4">
-                    <span>0 candidature</span>
-                    <span>8 profils correspondants</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm">Publier</Button>
-                    <Button size="sm" variant="outline">Modifier</Button>
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="flex gap-2">
+                      {job.status === "Active" ? (
+                        <>
+                          <Button size="sm" variant="outline">Voir les candidats</Button>
+                          <Button size="sm" variant="outline">Modifier l'offre</Button>
+                          <Button size="sm" variant="outline">Analytics</Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button size="sm">Publier</Button>
+                          <Button size="sm" variant="outline">Modifier</Button>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </TabsContent>
 
