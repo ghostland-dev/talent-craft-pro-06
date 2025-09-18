@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UserCheck, Users, Clock, FileText, Zap, Shield } from "lucide-react";
+import { UserCheck, Users, Clock, FileText, Zap, Shield, Briefcase } from "lucide-react";
 
 const Index = () => {
   return (
@@ -49,6 +49,12 @@ const Index = () => {
               <Link to="/recruteur">
                 <Users className="mr-2 h-4 w-4" />
                 Je suis recruteur
+              </Link>
+            </Button>
+            <Button size="lg" variant="secondary" className="px-8" asChild>
+              <Link to="/offres">
+                <Briefcase className="mr-2 h-4 w-4" />
+                Voir les offres
               </Link>
             </Button>
           </div>
