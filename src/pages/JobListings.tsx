@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -10,11 +9,22 @@ import {
   Building, 
   Clock, 
   Euro, 
-  Search, 
-  Filter,
   Briefcase,
-  ArrowLeft
+  ArrowLeft,
+  Heart,
+  Share2
 } from "lucide-react";
+import SearchWithFilters from "@/components/SearchWithFilters";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import AuthModal from "@/components/AuthModal";
+
+interface SearchFilters {
+  locations: string[];
+  contractTypes: string[];
+  experienceLevels: string[];
+  salaryRange: string[];
+  companies: string[];
+}
 
 const MOCK_JOBS = [
   {
@@ -81,7 +91,29 @@ const MOCK_JOBS = [
 
 const JobListings = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [savedJobs, setSavedJobs] = useState<number[]>([]);
+  const [filters, setFilters] = useState<SearchFilters>({
+    locations: [],
+    contractTypes: [],
+    experienceLevels: [],
+    salaryRange: [],
+    companies: []
+  });
   const [filteredJobs] = useState(MOCK_JOBS);
+
+  const handleSaveJob = (jobId: number) => {
+    if (savedJobs.includes(jobId)) {
+      setSavedJobs(savedJobs.filter(id => id !== jobId));
+    } else {
+      setSavedJobs([...savedJobs, jobId]);
+    }
+  };
+
+  const handleApplyToJob = () => {
+    setIsAuthModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -101,7 +133,9 @@ const JobListings = () => {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="ghost">Connexion</Button>
+              <Button variant="ghost" onClick={() => setIsAuthModalOpen(true)}>
+                Connexion
+              </Button>
               <Button asChild>
                 <Link to="/candidat">Mon profil</Link>
               </Button>
@@ -111,126 +145,134 @@ const JobListings = () => {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Search Section */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher un poste, une entreprise, une technologie..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Filtres
-            </Button>
+        {/* Search and Filters */}
+        <SearchWithFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filters={filters}
+          onFiltersChange={setFilters}
+          resultCount={filteredJobs.length}
+        />
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <LoadingSpinner size="lg" />
           </div>
-          
-          <div className="flex items-center justify-between">
-            <p className="text-muted-foreground">
-              {filteredJobs.length} offres trouvées
-            </p>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <span>Trier par :</span>
-              <Button variant="ghost" size="sm">
-                Pertinence
-              </Button>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Job Cards */}
-        <div className="grid gap-6">
-          {filteredJobs.map((job) => (
-            <Card key={job.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-primary/20 hover:border-l-primary">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <CardTitle className="text-xl hover:text-primary cursor-pointer">
-                        <Link to={`/offre/${job.id}`}>
-                          {job.title}
-                        </Link>
-                      </CardTitle>
-                      {job.matchPercentage && (
-                        <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
-                          {job.matchPercentage}% match
-                        </Badge>
-                      )}
+        {!isLoading && (
+          <div className="grid gap-6 mt-8">
+            {filteredJobs.map((job) => (
+              <Card key={job.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-primary/20 hover:border-l-primary">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <CardTitle className="text-xl hover:text-primary cursor-pointer">
+                          <Link to={`/offre/${job.id}`}>
+                            {job.title}
+                          </Link>
+                        </CardTitle>
+                        {job.matchPercentage && (
+                          <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
+                            {job.matchPercentage}% match
+                          </Badge>
+                        )}
+                      </div>
+                      <CardDescription className="flex items-center gap-4 text-base">
+                        <div className="flex items-center gap-1">
+                          <Building className="h-4 w-4" />
+                          {job.company}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {job.location} • {job.remoteType}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {job.postedDate}
+                        </div>
+                      </CardDescription>
                     </div>
-                    <CardDescription className="flex items-center gap-4 text-base">
-                      <div className="flex items-center gap-1">
-                        <Building className="h-4 w-4" />
-                        {job.company}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        {job.location} • {job.remoteType}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {job.postedDate}
-                      </div>
-                    </CardDescription>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleSaveJob(job.id)}
+                        className="text-muted-foreground hover:text-red-500"
+                      >
+                        <Heart className={`h-4 w-4 ${savedJobs.includes(job.id) ? 'fill-red-500 text-red-500' : ''}`} />
+                      </Button>
+                      <Button variant="ghost" size="icon">
+                        <Share2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent>
-                <p className="text-muted-foreground mb-4 line-clamp-2">
-                  {job.description}
-                </p>
+                </CardHeader>
                 
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {job.requiredSkills.slice(0, 4).map((skill) => (
-                    <Badge key={skill} variant="outline" className="text-xs">
-                      {skill}
-                    </Badge>
-                  ))}
-                  {job.requiredSkills.length > 4 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{job.requiredSkills.length - 4} autres
-                    </Badge>
-                  )}
-                </div>
-                
-                <Separator className="my-4" />
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-6 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Euro className="h-4 w-4 text-muted-foreground" />
-                      <span>{job.salaryMin}k - {job.salaryMax}k€</span>
-                    </div>
-                    <Badge variant="secondary">{job.contractType}</Badge>
-                    <span className="text-muted-foreground">{job.experienceLevel}</span>
+                <CardContent>
+                  <p className="text-muted-foreground mb-4 line-clamp-2">
+                    {job.description}
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {job.requiredSkills.slice(0, 4).map((skill) => (
+                      <Badge key={skill} variant="outline" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))}
+                    {job.requiredSkills.length > 4 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{job.requiredSkills.length - 4} autres
+                      </Badge>
+                    )}
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      Sauvegarder
-                    </Button>
-                    <Button size="sm" asChild>
-                      <Link to={`/offre/${job.id}`}>
-                        Voir l'offre
-                      </Link>
-                    </Button>
+                  <Separator className="my-4" />
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="flex items-center gap-1">
+                        <Euro className="h-4 w-4 text-muted-foreground" />
+                        <span>{job.salaryMin}k - {job.salaryMax}k€</span>
+                      </div>
+                      <Badge variant="secondary">{job.contractType}</Badge>
+                      <span className="text-muted-foreground">{job.experienceLevel}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/offre/${job.id}`}>
+                          Voir l'offre
+                        </Link>
+                      </Button>
+                      <Button size="sm" onClick={handleApplyToJob}>
+                        Postuler
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Load More */}
-        <div className="text-center mt-8">
-          <Button variant="outline" size="lg">
-            Charger plus d'offres
-          </Button>
-        </div>
+        {!isLoading && filteredJobs.length > 0 && (
+          <div className="text-center mt-8">
+            <Button variant="outline" size="lg" onClick={() => setIsLoading(true)}>
+              Charger plus d'offres
+            </Button>
+          </div>
+        )}
+
+        {/* Auth Modal */}
+        <AuthModal
+          open={isAuthModalOpen}
+          onOpenChange={setIsAuthModalOpen}
+        />
       </div>
     </div>
   );
